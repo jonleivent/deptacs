@@ -5,6 +5,8 @@ Require Import decideq.
 Ltac dde := dependent decide equality.
 Notation defeq := (ltac:(dde)) (only parsing).
 
+(*Notation "[ x  &  ..  &  y  &  z ]" := (existT _ x .. (existT _ y z ) ..).*)
+
 (* Typeclasses eauto := debug. *)
 (* Ltac debug.Debug_Level ::= 99. *)
 
@@ -16,7 +18,7 @@ Existing Instance Bool.bool_dec.
 
 Require BinNums.
 
-Ltac handle_sub_eqdec ::= default_handle_sub_eqdec.
+(*Ltac handle_sub_eqdec ::= idtac. *)
 (* Hint Cut [*] : typeclass_instances. *)
 (* Require Eqdep. *)
 (* Ltac UIP_alias ::= Eqdep.EqdepTheory.UIP. *)
@@ -28,10 +30,6 @@ Inductive Bad (A : Type) : Type -> Type -> Type :=
 Instance BadNat_eqdec : eqdec (Bad unit nat bool).
 Proof.
   dde.
-  all:let n := numgoals in guard n=1.
-  lazymatch goal with
-  | a : Type, b : Type |- ?a = ?b \/ ?a <> ?b => idtac
-  end.
 Abort.
 
 Inductive Fin : nat -> Set :=

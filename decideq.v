@@ -309,7 +309,7 @@ Ltac deslime pair :=
 Ltac do_sigT_inj_via_Eqdep H :=
   let tH := type of H in
   lazymatch tH with
-  | existT ?P ?p ?x = existT ?P ?p ?y =>
+  | existT _ _ _ = existT _ _ _ =>
     let H' := fresh in
     (let A :=inj_pair2_alias in apply A in H as H');
     clear_or_double_block_hyp H;

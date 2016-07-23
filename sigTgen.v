@@ -46,7 +46,7 @@ Ltac pose_over tx :=
       lazymatch p with
       | ((forall (a : ?T), @?B a), ?Y, (?A, ?R)) =>
         let tA := pose_over T in
-        let v := fresh "v0" in
+        let v := fresh "gen_x" in
         let dummy := match goal with _ => pose (v := to_be_generalized A : tA) end in
         let B' := (eval cbv beta in (B v)) in
         f (B', (Y v), R)
