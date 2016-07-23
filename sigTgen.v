@@ -8,17 +8,8 @@ tactic
 Require Import utils.
 Require Import paramth.
 
-Ltac type_head_args T acc :=
-  let pT := get_paramed_type_head T in
-  let rec f T acc :=
-      lazymatch T with
-      | pT =>
-        let Tt := type of T in
-        constr:((Tt, T, acc))
-      | ?F ?A => f F (A, acc)
-      end in
-  f T acc.
-
+(*Return the possibly nested sigT type needed to dependently analyze term -
+only term's type's indexes are given the sigT treatment.*)
 Ltac sigT_for term :=
   let T := type of term in
   let pT := get_paramed_type_head T in
@@ -32,9 +23,21 @@ Ltac sigT_for term :=
       end in
   f T pT.
 
+(*Return the existT of the above sigT for term.*)
 Ltac sigTify_term term :=
   let s := sigT_for term in
   constr:(ltac:(repeat (try exact term; eapply existT)) : s).
+
+Ltac type_head_args T acc :=
+  let pT := get_paramed_type_head T in
+  let rec f T acc :=
+      lazymatch T with
+      | pT =>
+        let Tt := type of T in
+        constr:((Tt, T, acc))
+      | ?F ?A => f F (A, acc)
+      end in
+  f T acc.
 
 Local Definition to_be_generalized{T}(x:T) := x.
 
