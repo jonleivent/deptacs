@@ -1,7 +1,7 @@
 
 Ltac Debug_Level := 0.
 
-Tactic Notation "debug" int_or_var(level) tactic3(tac) :=
+Tactic Notation "Debug" int_or_var(level) tactic3(tac) :=
   let dl := Debug_Level in
   tryif guard dl >= level
   then tac
@@ -9,5 +9,8 @@ Tactic Notation "debug" int_or_var(level) tactic3(tac) :=
 
 Tactic Notation "oc" open_constr(x) := idtac.
 
-Tactic Notation "debugif" tactic3(tac1) "then" int_or_var(level) tactic2(dtac) :=
-  unshelve oc(_:True);revgoals;[tac1|debug level dtac; exact I].
+Tactic Notation "DebugIf" tactic3(tac1) "then" int_or_var(level) tactic2(dtac) :=
+  let dl := Debug_Level in
+  tryif guard dl >= level
+  then (unshelve oc(_:True);revgoals;[tac1|dtac; exact I])
+  else tac1.

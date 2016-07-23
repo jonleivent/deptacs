@@ -6,7 +6,7 @@ Ltac dde := dependent decide equality.
 Notation defeq := (ltac:(dde)) (only parsing).
 
 (* Typeclasses eauto := debug. *)
-(* Ltac Debug_Level ::= 99. *)
+(* Ltac debug.Debug_Level ::= 99. *)
 
 Require PeanoNat.
 Existing Instance PeanoNat.Nat.eq_dec.
@@ -18,7 +18,7 @@ Require BinNums.
 
 Ltac handle_sub_eqdec ::= default_handle_sub_eqdec.
 (* Hint Cut [*] : typeclass_instances. *)
-Require Eqdep.
+(* Require Eqdep. *)
 (* Ltac UIP_alias ::= Eqdep.EqdepTheory.UIP. *)
 (* Ltac inj_pair2_alias ::= Eqdep.EqdepTheory.inj_pair2. *)
 

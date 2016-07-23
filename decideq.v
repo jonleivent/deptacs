@@ -160,11 +160,6 @@ TODO:
 
   which, although not an eqdec/eqem, may be more tractable.
 
-- Much of the process up through do_sigma_injs has nothing really to do with
-  the actual goal, and so is just a general procedure for dealing with
-  dependent induction or destruction.  Maybe it can be factored out as a
-  separate general purpose tactic.
-
  *)
 
 (*for hyps we process, either clear them or double-block them so that they get
@@ -258,7 +253,7 @@ Ltac do_injections immediate := fail 999. (*forward def, redefined below, calls 
 
 Ltac solve_it immediate :=
   let G := goaltype in
-  debug 5 idtac "Debug: solve_it" immediate "on" G;
+  Debug 5 idtac "Debug: solve_it" immediate "on" G;
   tryif 
     lazymatch G with
     | False => solve_congruences_directly
@@ -272,7 +267,7 @@ Ltac solve_it immediate :=
       do_injections immediate; fail
     end
   then idtac
-  else (debug 5 idtac "Debug: solve_it" immediate "failed on" G; fail).
+  else (Debug 5 idtac "Debug: solve_it" immediate "failed on" G; fail).
 
 (* Why do we call solve_or_defer_sub_eqdec below instead of solve_it?  And why
 doesn't solve_it call solve_or_defer_sub_eqdec?  Note that solve_it will call
@@ -284,7 +279,7 @@ goal, but on sub eqdecs created in order to help solve that goal, we
 call solve_or_defer_sub_eqdec instead, which may defer it.  *)
 
 Ltac deslime pair :=
-  debug 4 idtac "Debug: deslime" pair;
+  Debug 4 idtac "Debug: deslime" pair;
   lazymatch pair with
   | (?A, ?A) => fail
   | (?A ?X, ?A ?Y) => deslime (X, Y)
@@ -298,7 +293,7 @@ Ltac deslime pair :=
        force_subst H
       |let H' := fresh in
        let tX := type of X in
-       debug 1 idtac "Debug: deslime obligated sub-eqdec on type" tX "to deslime" pair;
+       Debug 1 idtac "Debug: deslime obligated sub-eqdec on type" tX "to deslime" pair;
        (tryif is_prop
          then assert ((X=Y)\/(X<>Y)) as H
          else assert ({X=Y}+{X<>Y}) as H);
@@ -315,11 +310,10 @@ Ltac do_sigT_inj_via_Eqdep H :=
   let tH := type of H in
   lazymatch tH with
   | existT ?P ?p ?x = existT ?P ?p ?y =>
-    debug 1 idtac "Debug: do_sigT_inj_via_Eqdep on" tH;
     let H' := fresh in
     (let A :=inj_pair2_alias in apply A in H as H');
     clear_or_double_block_hyp H;
-    debug 1 idtac "Debug: do_sigT_inj_via_Eqdep applied on" tH;
+    Debug 1 idtac "Debug: do_sigT_inj_via_Eqdep applied on" tH;
     subst
   end.
 
@@ -328,8 +322,10 @@ Ltac do_sigT_inj H immediate :=
   first
     [do_sigT_inj_via_Eqdep H
     |apply inj_pair2_eq_dec in H as H';[|assumption];
-     clear_or_double_block_hyp H;
-     debug 1 idtac "Debug: do_sigT_inj re-used hyp"
+     Debug 1 let tH := type of H in
+             let tH' := type of H' in
+             idtac "Debug: do_sigT_inj re-used hyp to prove" tH "==>" tH';
+     clear_or_double_block_hyp H
     |let subT := fresh in
      (*use evar sub:subT to capture sub-eqdec needed by inj_pair2_eq_dec for
      re-use.  Note that using refine to establish the evar will provoke typeclass
@@ -357,7 +353,7 @@ Ltac block_equalities :=
     lazymatch goal with | H : _ = _ |- _ => block_hyp H end.
 
 Ltac do_one_injection immediate :=
-  debug 6 idtac "Debug: do_one_injection" immediate;
+  Debug 6 idtac "Debug: do_one_injection" immediate;
   match goal with
   | H : @eq ?T ?X ?Y |- _ =>
     first
@@ -385,7 +381,7 @@ Ltac do_eqdec_needed_injs :=
 
 Ltac non_dep_destruct_cleanup :=
   intros; subst;
-  debug 3 idtac "Debug: non_dep_destruct_cleanup doing immediate injections";
+  Debug 3 idtac "Debug: non_dep_destruct_cleanup doing immediate injections";
   do_injections true;
   block_equalities.
 
@@ -416,7 +412,7 @@ Ltac start_eqdec genindexes :=
   else (depdestruct b; dep_destruct_cleanup).
 
 Ltac do_next_field pair :=
-  debug 4 idtac "Debug: do_next_field" pair;
+  Debug 4 idtac "Debug: do_next_field" pair;
   lazymatch pair with
   | (?A, ?A) => left; reflexivity
   | (?A ?X, ?A ?Y) =>

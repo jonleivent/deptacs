@@ -3,6 +3,8 @@ Ltac goaltype := lazymatch goal with |- ?G => G end.
 
 Ltac last_hyp := lazymatch goal with H :_ |- _ => H end.
 
+Ltac revert_all := repeat let H := last_hyp in revert H.
+
 Ltac get_value H := eval cbv delta [H] in H.
 
 Ltac head_of term :=
