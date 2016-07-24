@@ -28,51 +28,69 @@ Ltac sigTify_term term :=
   let s := sigT_for term in
   constr:(ltac:(repeat (try exact term; eapply existT)) : s).
 
-Ltac type_head_args T acc :=
-  let pT := get_paramed_type_head T in
-  let rec f T acc :=
-      lazymatch T with
-      | pT =>
-        let Tt := type of T in
-        constr:((Tt, T, acc))
-      | ?F ?A => f F (A, acc)
-      end in
-  f T acc.
+Ltac reverse_args_until_target T targ acc :=
+  lazymatch T with
+  | targ => acc
+  | ?F ?A => reverse_args_until_target F targ (A, acc)
+  end.
 
-Local Definition to_be_generalized{T}(x:T) := x.
+Local Definition clone_of{T}(x:T) := x.
 
-Ltac pose_over tx :=
+Ltac is_already_cloned H :=
+  lazymatch get_value H with clone_of _ => I end.
+
+Ltac clone H T :=
+  let H' := fresh "gen_x" in
+  let dummy := match goal with _ => pose (H' := clone_of H : T) end in
+  H'.
+
+(*pose replacement copies of all index-filling args, and mark them with
+clone_of for later:*)
+Ltac pose_clones_for_index_args T :=
   let rec f p :=
       lazymatch p with
-      | ((forall (a : ?T), @?B a), ?Y, (?A, ?R)) =>
-        let tA := pose_over T in
-        let v := fresh "gen_x" in
-        let dummy := match goal with _ => pose (v := to_be_generalized A : tA) end in
-        let B' := (eval cbv beta in (B v)) in
-        f (B', (Y v), R)
-      | (_, ?Y, I)  => Y
+        (*type of X......,  X, args to use*)
+      | ((forall (a : ?ta), _), ?X, (?A , ?R)) =>
+        (*Note: ta may differ from type of A by virtue of previous clones*)
+        match goal with
+        | _ =>
+          (*no need to clone A more than once:*)
+          let dummy := is_already_cloned A in
+          let X' := constr:(X A) in
+          let T' := type of X' in
+          f (T', X', R)
+        | _ =>
+          let ta' := pose_clones_for_index_args ta in (*recurse on ta first*)
+          let A' := clone A ta' in (*then clone A with the clone-indexed ta'*)
+          let X' := constr:(X A') in
+          let T' := type of X' in
+          f (T', X', R)
+        end
+      | (_, ?X, I)  => X (*returns: pt paramed with clones*)
       end in
-  let tha := type_head_args tx I in
-  f tha.
+  let pT := get_paramed_type_head T in
+  let tpT := type of pT in
+  let args := reverse_args_until_target T pT I in
+  f (tpT, pT, args).
 
-Ltac do_generalization :=
+(*create an (possibly sigT-based) equality in the conclusion for one clone_of
+marked local def:*)
+Ltac equate_one_clone :=
   match goal with
-  | [H' := to_be_generalized ?H |- _] =>
-    unfold to_be_generalized in H';
+  | [H' := clone_of ?H |- _] =>
+    unfold clone_of in H';
     let s' := sigTify_term H' in
     let s := sigTify_term H in
     generalize (eq_refl : s' = s);
     clearbody H'
-  | [H' := to_be_generalized _ |- _] =>
-    (*the remaining ones fail clearbody, hopefully aren't needed to be generalized:*)
-    unfold to_be_generalized in H';
-    subst H'
-  end.  
+  end.
 
 Ltac sigT_generalize_eqs H :=
   let T := type of H in
-  let T' := pose_over T in
+  let T' := pose_clones_for_index_args T in
   let H' := fresh H in
-  pose (H' := to_be_generalized H : T');
-  repeat do_generalization;
-  generalize H; rename H' into H, H into H'; try clear H'.
+  pose (H' := clone_of H : T');
+  repeat equate_one_clone;
+  generalize H;
+  rename H' into H, H into H';
+  try clear H'.
