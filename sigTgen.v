@@ -37,9 +37,9 @@ Ltac reverse_args_until_target T targ acc :=
 Local Definition clone_of{T}(x:T) := x.
 
 Ltac is_already_cloned H :=
-  lazymatch get_value H with clone_of _ => I end.
+  lazymatch get_value H with clone_of _ => H end.
 
-Ltac clone H T :=
+Ltac pose_clone H T :=
   let H' := fresh "gen_x" in
   let dummy := match goal with _ => pose (H' := clone_of H : T) end in
   H'.
@@ -52,26 +52,22 @@ Ltac pose_clones_for_index_args T :=
         (*type of X......,  X, args to use*)
       | ((forall (a : ?ta), _), ?X, (?A , ?R)) =>
         (*Note: ta may differ from type of A by virtue of previous clones*)
-        match goal with
-        | _ =>
-          (*no need to clone A more than once:*)
-          let dummy := is_already_cloned A in
-          let X' := constr:(X A) in
-          let T' := type of X' in
-          f (T', X', R)
-        | _ =>
-          let ta' := pose_clones_for_index_args ta in (*recurse on ta first*)
-          let A' := clone A ta' in (*then clone A with the clone-indexed ta'*)
-          let X' := constr:(X A') in
-          let T' := type of X' in
-          f (T', X', R)
-        end
+        let A' :=
+            match goal with
+            | _ => is_already_cloned A (*no need to clone A more than once:*)
+            | _ =>
+              let ta' := pose_clones_for_index_args ta in (*recurse on ta first*)
+              pose_clone A ta'
+            end in
+        let X' := constr:(X A') in
+        let T' := type of X' in
+        f (T', X', R)
       | (_, ?X, I)  => X (*returns: pt paramed with clones*)
       end in
   let pT := get_paramed_type_head T in
   let tpT := type of pT in
-  let args := reverse_args_until_target T pT I in
-  f (tpT, pT, args).
+  let index_args := reverse_args_until_target T pT I in
+  f (tpT, pT, index_args).
 
 (*create an (possibly sigT-based) equality in the conclusion for one clone_of
 marked local def:*)
