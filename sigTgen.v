@@ -34,19 +34,18 @@ Ltac reverse_args_until_target T targ acc :=
   | ?F ?A => reverse_args_until_target F targ (A, acc)
   end.
 
-Local Definition clone_of{T}(x:T) := x.
-Extraction Inline clone_of.
+Local Definition cloned{T}(x:T) := x.
 
 Ltac is_already_cloned H :=
-  lazymatch get_value H with clone_of _ => H end.
+  lazymatch type of H with cloned _ => H end.
 
 Ltac pose_clone H T :=
   let H' := fresh "gen_x" in
-  let dummy := match goal with _ => pose (H' := clone_of H : T) end in
+  let dummy := match goal with _ => pose (H' := H : cloned T) end in
   H'.
 
 (*pose replacement copies of all index-filling args, and mark them with
-clone_of for later:*)
+cloned for later:*)
 Ltac pose_clones_for_index_args T :=
   let rec f p :=
       lazymatch p with
@@ -70,12 +69,12 @@ Ltac pose_clones_for_index_args T :=
   let index_args := reverse_args_until_target T pT I in
   f (tpT, pT, index_args).
 
-(*create an (possibly sigT-based) equality in the conclusion for one clone_of
+(*create an (possibly sigT-based) equality in the conclusion for one cloned
 marked local def:*)
 Ltac equate_one_clone :=
   match goal with
-  | [H' := clone_of ?H |- _] =>
-    unfold clone_of in H';
+  | [H' := ?H : cloned _ |- _] =>
+    unfold cloned in H';
     let s' := sigTify_term H' in
     let s := sigTify_term H in
     generalize (eq_refl : s' = s);
@@ -86,7 +85,7 @@ Ltac sigT_generalize_eqs H :=
   let T := type of H in
   let T' := pose_clones_for_index_args T in
   let H' := fresh H in
-  pose (H' := clone_of H : T');
+  pose (H' := H : cloned T');
   repeat equate_one_clone;
   generalize H;
   rename H' into H, H into H';
