@@ -35,6 +35,7 @@ Ltac reverse_args_until_target T targ acc :=
   end.
 
 Local Definition clone_of{T}(x:T) := x.
+Extraction Inline clone_of.
 
 Ltac is_already_cloned H :=
   lazymatch get_value H with clone_of _ => H end.

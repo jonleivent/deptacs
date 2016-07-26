@@ -21,7 +21,6 @@ singleton classes.
 *)
 
 Require Import utils.
-Require Import Eqdep_em.
 Require Import block.
 Require Import debug.
 Require Import paramth.
@@ -30,9 +29,19 @@ Require Import sigTgen.
 Set Injection On Proofs.
 
 (*Redefine these to their respective symbols as desired:*)
-Ltac proof_irrelevance_alias := False. (*Coq.Logic.ProofIrrelevance.proof_irrelevance*)
-Ltac inj_pair2_alias := False. (*Coq.Logic.Eqdep.EqdepTheory.inj_pair2*)
-Ltac UIP_alias := False. (*Coq.Logic.Eqdep.EqdepTheory.UIP*)
+
+ (*Coq.Logic.ProofIrrelevance.proof_irrelevance*)
+Ltac proof_irrelevance_alias := False.
+
+(*Coq.Logic.Eqdep.EqdepTheory.inj_pair2*)
+(*Coq.Logic.Eqdep_dec.inj_pair2_eq_dec*)
+(*Eqdep_em.inj_pair2_eqem*)
+Ltac inj_pair2_alias := False.
+
+(*Coq.Logic.Eqdep.EqdepTheory.UIP*)
+(*Coq.Logic.Eqdep_dec.UIP_dec*)
+(*Eqdep_em.UIP_em*)
+Ltac UIP_alias := False.
 
 (*Note: it does not work to attempt to pick up inj_pair2 as a hint because its
 application is too ambiguous in nested sigT cases, as it must infer a function.*)
@@ -239,8 +248,8 @@ Ltac try_hyp :=
 Ltac solve_equality immediate :=
   try solve_congruences_directly;
   try (let A := proof_irrelevance_alias in apply A);
-  try (let A := UIP_alias in apply A);
-  apply UIP_dec; solve_or_defer_sub_eqdec immediate
+  (let A := UIP_alias in apply A);
+  solve_or_defer_sub_eqdec immediate
 with solve_or_defer_sub_eqdec immediate :=
   repeat intro; subst;
   clear_unblocked_eqs; clear_all_blocks; try_hyp;
@@ -305,39 +314,27 @@ Ltac deslime pair :=
       ]
   end.
 
-(*gets sigT inj from eqdep, if Eqdep was included*)
-Ltac do_sigT_inj_via_Eqdep H :=
-  let tH := type of H in
-  lazymatch tH with
-  | existT _ _ _ = existT _ _ _ =>
-    let H' := fresh in
-    (let A :=inj_pair2_alias in apply A in H as H');
-    clear_or_double_block_hyp H;
-    Debug 1 idtac "Debug: do_sigT_inj_via_Eqdep applied on" tH;
-    subst
-  end.
+Ltac do_subless_sigT_inj H :=
+  let H' := fresh in
+  (let A :=inj_pair2_alias in apply A in H as H');
+  [|assumption..];
+  Debug 1 let tH := type of H in idtac "Debug: do_subless_sigT_inj applied on" tH.
 
 Ltac do_sigT_inj H immediate :=
-  let H' := fresh H in
   first
-    [do_sigT_inj_via_Eqdep H
-    |apply inj_pair2_eq_dec in H as H';[|assumption];
-     Debug 1 let tH := type of H in
-             let tH' := type of H' in
-             idtac "Debug: do_sigT_inj re-used hyp to prove" tH "==>" tH';
-     clear_or_double_block_hyp H
+    [do_subless_sigT_inj H
     |let subT := fresh in
      (*use evar sub:subT to capture sub-eqdec needed by inj_pair2_eq_dec for
      re-use.  Note that using refine to establish the evar will provoke typeclass
      search, which we don't want to do yet.*)
      evar (subT : Type);
      let sub := fresh in
-     unshelve evar (sub:subT);revgoals;
-     [subst subT;
-      (*TBD: note that by using the eqem-based Eqdep inj_pair2_eq_dec, the sub
+     unshelve evar (sub:subT);subst subT;revgoals;
+     [(*TBD: note that by using the eqem-based Eqdep inj_pair2_eq_dec, the sub
       will be an eqem - which means we will be saving eqems as hyps, which are
       not useful for future eqdecs.  Hence we may have more work to do.*)
-      apply inj_pair2_eq_dec with (1:=sub) in H as H';
+      let H' := fresh H in
+      (let A :=inj_pair2_alias in apply A with (1:=sub) in H as H');
       (*make sure this apply did something useful:*)
       let tH' := type of H' in
       lazymatch tH' with ?A = ?A => fail | _ => idtac end;
@@ -345,8 +342,10 @@ Ltac do_sigT_inj H immediate :=
       lazymatch goal with H : tH' |- _ => fail | _ => idtac end;
       intro H';
       clearbody sub (*else not reusable*)
-     |subst subT; solve_or_defer_sub_eqdec immediate]
-    ].
+     |solve_or_defer_sub_eqdec immediate]
+    ];
+  clear_or_double_block_hyp H;
+  subst.
 
 Ltac block_equalities :=
   repeat
@@ -397,13 +396,13 @@ Ltac dep_destruct_cleanup :=
 
 Ltac depdestruct H := sigT_generalize_eqs H; block_conc; destruct H.
 
-Ltac start_eqdec genindexes :=
+Ltac start_eqdec genindexes ind :=
   generalize_eqdep genindexes;
   intros;
   let b := last_hyp in
   revert b;
   let a := last_hyp in
-  helpful_induction a;
+  helpful_induction a ind;
   intros;
   let b := last_hyp in
   subst;
@@ -429,24 +428,36 @@ Ltac do_fields :=
             end;
      do_injections false).
 
-Ltac decide_one_equality genindexes :=
-  unshelve (start_eqdec genindexes; do_fields; handle_sub_eqdec).
+Ltac decide_one_equality genindexes ind :=
+  unshelve (start_eqdec genindexes ind; do_fields; handle_sub_eqdec).
 
 (*the "simple" version doesn't do its own index generalizing:*)
-Tactic Notation "simple" "dependent" "decide" "equality" := repeat decide_one_equality false.
-Tactic Notation "dependent" "decide" "equality" := repeat decide_one_equality true.
+Tactic Notation "simple" "dependent" "decide" "equality" "using" constr(ind) :=
+  repeat decide_one_equality false ind.
+Tactic Notation "simple" "dependent" "decide" "equality" :=
+  repeat decide_one_equality false False.
+Tactic Notation "dependent" "decide" "equality" "using" constr(ind) :=
+  repeat decide_one_equality true ind.
+Tactic Notation "dependent" "decide" "equality" :=
+  repeat decide_one_equality true False.
 
-Ltac dependent_compare x y genindexes :=
+Ltac dependent_compare x y genindexes ind :=
   try typeclasses eauto;
   let H := fresh in
   first
-    [assert (x=y \/ x<>y) as [H|H] by (repeat decide_one_equality genindexes)
-    |assert ({x=y}+{x<>y}) as [H|H] by (repeat decide_one_equality genindexes)
+    [assert (x=y \/ x<>y) as [H|H] by (repeat decide_one_equality genindexes ind)
+    |assert ({x=y}+{x<>y}) as [H|H] by (repeat decide_one_equality genindexes ind)
     ];
   revert H.
 
-Tactic Notation "simple" "dependent" "compare" constr(x) constr(y) := dependent_compare x y false.
-Tactic Notation "dependent" "compare" constr(x) constr(y) := dependent_compare x y true.
+Tactic Notation "simple" "dependent" "compare" constr(x) constr(y) "using" constr(ind) :=
+  dependent_compare x y false ind.
+Tactic Notation "simple" "dependent" "compare" constr(x) constr(y) :=
+  dependent_compare x y false False.
+Tactic Notation "dependent" "compare" constr(x) constr(y) "using" constr(ind) :=
+  dependent_compare x y true ind.
+Tactic Notation "dependent" "compare" constr(x) constr(y) :=
+  dependent_compare x y true False.
 
 Existing Class sumbool.
 Hint Mode sumbool + + : typeclass_instances.

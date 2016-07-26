@@ -15,9 +15,11 @@ Ltac head_of term :=
 
 (*A helpful induction has to alter the goal to be about ctors.  Not all
 induction lemmas will do this, so we should check. *)
-Ltac helpful_induction H :=
+Ltac helpful_induction H ind :=
   let G1 := goaltype in
-  induction H;
+  (tryif constr_eq ind False
+    then induction H
+    else induction H using ind);
   tryif (intros; let G2 := goaltype in constr_eq G1 G2)
   then fail
   else idtac.

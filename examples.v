@@ -19,10 +19,19 @@ Existing Instance Bool.bool_dec.
 Require BinNums.
 
 (*Ltac handle_sub_eqdec ::= idtac. *)
-(* Hint Cut [*] : typeclass_instances. *)
+(* Hint Cut [*] : typeclass_instances. (*turns off typeclass search*) *)
+
 (* Require Eqdep. *)
 (* Ltac UIP_alias ::= Eqdep.EqdepTheory.UIP. *)
 (* Ltac inj_pair2_alias ::= Eqdep.EqdepTheory.inj_pair2. *)
+
+Require Eqdep_dec.
+Ltac UIP_alias ::= Eqdep_dec.UIP_dec.
+Ltac inj_pair2_alias ::= Eqdep_dec.inj_pair2_eq_dec.
+
+(* Require Eqdep_em. *)
+(* Ltac UIP_alias ::= Eqdep_em.UIP_em. *)
+(* Ltac inj_pair2_alias ::= Eqdep_em.inj_pair2_eqem. *)
 
 Inductive Bad (A : Type) : Type -> Type -> Type :=
   bad1 : Bad A nat bool.
@@ -62,9 +71,19 @@ Proof.
 Qed.
 Print Assumptions Finx_eqdec.
 
+Inductive vect A : nat -> Type :=
+| vnil : vect A 0
+| vcons : forall (h:A) (n:nat), vect A n -> vect A (S n).
+
+Instance vect_eqdec A `{A_eqdec : eqdec A} : eqdec (vect A).
+Proof.
+  dde.
+Qed.
+Print Assumptions vect_eqdec.
+
 Section Green_Slime.
   Variable Goo : Set.
-  Context {Goo_eqem : forall g1 g2 : Goo, g1=g2 \/ g1<>g2}.
+  Context {Goo_eqdec : forall g1 g2 : Goo, {g1=g2}+{g1<>g2}}.
   Variable green_slime : bool -> Goo.
   Variable blue_slime : bool -> bool.
 

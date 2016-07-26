@@ -18,14 +18,14 @@ Section EqdepEm.
 
   Variable x : A.
 
-  Variable eq_dec : forall y:A, x = y \/ x <> y.
+  Variable eqem : forall y:A, x = y \/ x <> y.
 
   (*Understanding nu: it looks like an identity function - but its purpose is
   to redirect callers that provide an arbitrary instance for u to the specific
-  instance captured within eq_dec.  That way, all nus are the same specific
+  instance captured within eqem.  That way, all nus are the same specific
   instance.*)
   Let nu (y:A) (u:x = y) : x = y :=
-    match eq_dec y with
+    match eqem y with
       | or_introl eqxy => eqxy
       | or_intror neqxy => False_ind _ (neqxy u)
     end.
@@ -35,7 +35,7 @@ Section EqdepEm.
     intros.
     unfold nu.
     (*Only the proof of false needs help*)
-    destruct (eq_dec y) as [|Hneq].
+    destruct (eqem y) as [|Hneq].
     - reflexivity.
     - (*All proofs of False are the trivially the same*) case Hneq.
   Qed.
@@ -61,7 +61,7 @@ Section EqdepEm.
     reflexivity.
   Qed.
 
-  Theorem K_dec_on :
+  Theorem K_em_on :
     forall P:x = x -> Prop, P (eq_refl x) -> forall p:x = x, P p.
   Proof.
     intros.
@@ -74,7 +74,7 @@ Section EqdepEm.
   Let proj (P:A -> Prop) (exP:ex P) (def:P x) : P x :=
     match exP with
       | ex_intro _ x' prf =>
-        match eq_dec x' with
+        match eqem x' with
           | or_introl eqprf => eq_ind x' P prf x (eq_sym eqprf)
           | _ => def
         end
@@ -86,84 +86,71 @@ Section EqdepEm.
   Proof.
     intros.
     cut (proj (ex_intro P x y) y = proj (ex_intro P x y') y).
-    - cbn. destruct (eq_dec x) as [Heq|Hneq].
-      + elim Heq using K_dec_on. cbv. tauto.
+    - cbn. destruct (eqem x) as [Heq|Hneq].
+      + elim Heq using K_em_on. cbv. tauto.
       + case Hneq. reflexivity.
     - case H. reflexivity.
   Qed.
 
 End EqdepEm.
 
-(** Now we prove the versions that require decidable equality for the entire type
-    rather than just on the given element.  The rest of the file uses this total
-    decidable equality.  We could do everything using decidable equality at a point
-    (because the induction rule for [eq] is really an induction rule for
-    [{ y : A | x = y }]), but we don't currently, because changing everything
-    would break backward compatibility and no-one has yet taken the time to define
-    the pointed versions, and then re-define the non-pointed versions in terms of
-    those. *)
-
-Theorem eq_proofs_unicity A (eq_dec : forall x y : A, x = y \/ x <> y) (x : A)
+Theorem eq_proofs_unicity A (eqem : forall x y : A, x = y \/ x <> y) (x : A)
 : forall (y:A) (p1 p2:x = y), p1 = p2.
-Proof (@eq_proofs_unicity_on A x (eq_dec x)).
+Proof (@eq_proofs_unicity_on A x (eqem x)).
 
-Theorem K_dec A (eq_dec : forall x y : A, x = y \/ x <> y) (x : A)
+Theorem K_em A (eqem : forall x y : A, x = y \/ x <> y) (x : A)
 : forall P:x = x -> Prop, P (eq_refl x) -> forall p:x = x, P p.
-Proof (@K_dec_on A x (eq_dec x)).
+Proof (@K_em_on A x (eqem x)).
 
-Theorem inj_right_pair A (eq_dec : forall x y : A, x = y \/ x <> y) (x : A)
+Theorem inj_right_pair A (eqem : forall x y : A, x = y \/ x <> y) (x : A)
 : forall (P:A -> Prop) (y y':P x),
     ex_intro P x y = ex_intro P x y' -> y = y'.
-Proof (@inj_right_pair_on A x (eq_dec x)).
+Proof (@inj_right_pair_on A x (eqem x)).
 
 Require Coq.Logic.EqdepFacts.
 
-(** We deduce axiom [K] for (decidable) types *)
-Theorem K_dec_type :
+Theorem K_em_type :
   forall A:Type,
     (forall x y:A, x = y \/ x <> y) ->
     forall (x:A) (P:x = x -> Prop), P (eq_refl x) -> forall p:x = x, P p.
-Proof. apply K_dec. Qed.
+Proof. apply K_em. Qed.
 
-Theorem K_dec_set :
+Theorem K_em_set :
   forall A:Set,
     (forall x y:A, x = y \/ x <> y) ->
     forall (x:A) (P:x = x -> Prop), P (eq_refl x) -> forall p:x = x, P p.
-Proof fun A => K_dec_type (A:=A).
+Proof fun A => K_em_type (A:=A).
 
-(** We deduce the [eq_rect_eq] axiom for (decidable) types *)
-Theorem eq_rect_eq_dec :
+Theorem eq_rect_eqem :
   forall A:Type,
     (forall x y:A, x = y \/ x <> y) ->
     forall (p:A) (Q:A -> Type) (x:Q p) (h:p = p), x = eq_rect p Q x p h.
 Proof.
-  intros A eq_dec.
-  apply (EqdepFacts.Streicher_K__eq_rect_eq A (K_dec_type eq_dec)).
+  intros A eqem.
+  apply (EqdepFacts.Streicher_K__eq_rect_eq A (K_em_type eqem)).
 Qed.
 
-(** We deduce the injectivity of dependent equality for decidable types *)
-Theorem eq_dep_eq_dec :
+Theorem eq_dep_eqem :
   forall A:Type,
     (forall x y:A, x = y \/ x <> y) ->
      forall (P:A->Type) (p:A) (x y:P p), EqdepFacts.eq_dep A P p x p y -> x = y.
-Proof (fun A eq_dec => EqdepFacts.eq_rect_eq__eq_dep_eq A (eq_rect_eq_dec eq_dec)).
+Proof (fun A eqem => EqdepFacts.eq_rect_eq__eq_dep_eq A (eq_rect_eqem eqem)).
 
-Theorem UIP_dec :
+Theorem UIP_em :
   forall (A:Type),
     (forall x y:A, x = y \/ x <> y) ->
     forall (x y:A) (p1 p2:x = y), p1 = p2.
-Proof (fun A eq_dec => EqdepFacts.eq_dep_eq__UIP A (eq_dep_eq_dec eq_dec)).
+Proof. apply eq_proofs_unicity. Qed.
 
-  (** From decidability to inj_pair2 **)
-Lemma inj_pair2_eq_dec : forall A:Type, (forall x y:A, x=y \/ x<>y) ->
+Lemma inj_pair2_eqem : forall A:Type, (forall x y:A, x=y \/ x<>y) ->
    ( forall (P:A -> Type) (p:A) (x y:P p), existT P p x = existT P p y -> x = y ).
 Proof.
-  intros A eq_dec.
+  intros A eqem.
   apply EqdepFacts.eq_dep_eq__inj_pair2.
   apply EqdepFacts.eq_rect_eq__eq_dep_eq.
   unfold EqdepFacts.Eq_rect_eq, EqdepFacts.Eq_rect_eq_on.
-  intros; apply eq_rect_eq_dec.
-  apply eq_dec.
+  intros; apply eq_rect_eqem.
+  apply eqem.
 Qed.
 
 Unset Implicit Arguments.
