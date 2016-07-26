@@ -1,17 +1,16 @@
-
-
 (*
 
-A dependent decide equality tactic that works without axioms on dependent
-types.
+A dependent decide equality tactic that works with or without axioms on
+dependent types.
 
 There are several modes of usage.  The default is to use typeclasses when
 available, and to avoid usage of axioms.  To turn off typeclass search,
 re-define the handle_sub_eqdec tactic to idtac (from its
 default_handle_sub_eqdec value).  To enable axioms re-define one or more of
 the tactic aliases: proof_irrelevance_alias, inj_pair2_alias and UIP_alias.
-If both are done, the algorithm will prefer axioms to typeclass search, as
-axiom usage will be faster and lead to smaller proof terms.
+If this is done, the algorithm will prefer axioms to typeclass search, as
+axiom usage will be faster and lead to smaller proof terms.  Note that
+inj_pair2_alias needs some proper definition (other than False).
 
 For typeclasses, sumbool and or are made Existing Classes, so that one can add
 Existing Instances like Nat.eq_dec.  TBD: if use of Existing Class makes for
@@ -30,17 +29,21 @@ Set Injection On Proofs.
 
 (*Redefine these to their respective symbols as desired:*)
 
- (*Coq.Logic.ProofIrrelevance.proof_irrelevance*)
+(*Valid values for proof_irrelevance_alias are:*)
+(*Coq.Logic.ProofIrrelevance.proof_irrelevance*)
+(*False -- disable use of proof irrelevance*)
 Ltac proof_irrelevance_alias := False.
 
-(*Coq.Logic.Eqdep.EqdepTheory.inj_pair2*)
-(*Coq.Logic.Eqdep_dec.inj_pair2_eq_dec*)
-(*Eqdep_em.inj_pair2_eqem*)
+(*Valid values for inj_pair2_alias are: *)
+(*Coq.Logic.Eqdep.EqdepTheory.inj_pair2  -- uses Coq.Logic.Eqdep.Eq_rect_eq.eq_rect_eq axiom*)
+(*Coq.Logic.Eqdep_dec.inj_pair2_eq_dec   -- no axiom, subgoals are all eqdecs*)
+(*Eqdep_em.inj_pair2_eqem                -- no axiom, subgoals are all eqems*)
 Ltac inj_pair2_alias := False.
 
-(*Coq.Logic.Eqdep.EqdepTheory.UIP*)
-(*Coq.Logic.Eqdep_dec.UIP_dec*)
-(*Eqdep_em.UIP_em*)
+(*Coq.Logic.Eqdep.EqdepTheory.UIP        -- uses Coq.Logic.Eqdep.Eq_rect_eq.eq_rect_eq axiom*)
+(*Coq.Logic.Eqdep_dec.UIP_dec            -- no axiom, subgoals are all eqdecs*)
+(*Eqdep_em.UIP_em                        -- no axiom, subgoals are all eqems*)
+(*False                                  -- do not use UIP*)
 Ltac UIP_alias := False.
 
 (*Note: it does not work to attempt to pick up inj_pair2 as a hint because its
@@ -89,19 +92,15 @@ This is because the type of a constructor is seen by Coq as dependent on the
 constructor itself even in this trivial case where there really is only one
 type (Simp tt) in the type family and only one constructo for that type.
 
-So, for such indexed types, we will generalize the conclusion over b, freeing
-it's bs from the destructee.  But first, to tie the generalized bs to the
-destructed b, we will create a dependent equality between the two based on
-nested sigTs.  How deeply nested in sigTs this equality has to be is
-determined by trying successive nestings on the next rightmost type parameter
-until destruct b works, since we can't tell a-priori in Ltac how many of those
-type parameters are indexes.
+So, for such indexed types, we will generalize the conclusion over b and its
+type's indexes (recursively), freeing the conclusion from the destructee.  But
+first, to tie the generalized bs and indexes to the destructee, we will create
+dependent equalities between them based on nested sigTs, one level of nesting
+for each type index involved.
 
 Once we destruct b with the sigT equality in place, the non-generalized side
-of the sigT equality will be allowed type-change along with b without
-illegally impacting the type of the sigT equality itself.  This permissibility
-happens because the indexes become data within the sigT equality, and are no
-longer part of its type.
+of the sigT equalities will be allowed to type-change along with b without
+illegally impacting the type of the sigT equality itself.
 
 Before going further, we process any equalities that may have come from fields
 of a or b, doing injections on them as needed, subject to the requirement that
@@ -111,24 +110,22 @@ lead us astray later (into working to prove other eqdecs or eqems that we
 really don't need).  We will unblock these just before finishing.
 
 In the dependent destruction case, we then turn our attention to the sigT
-equality - we need to process that in each subgoal so that the eqdec (eqem)
+equalities - we need to process them in each subgoal so that the eqdec (eqem)
 goal becomes about constructors on both sides of the (in)equalities.  There
 are three tools we use to do injections (which are also used above on the
 field equalities, if necessary).  One is obviously the injection tactic,
 although we wrap it in a way so that it will fail if the injection it does
-isn't productive.  The second is the inj_pair2_eq_dec theorem from Eqdep_dec,
-which allows us to break down the sigT equality one nesting level at a time,
-in exchange for a sub-eqdec (or sub-eqem, if my version of Eqdep_dec is used
-instead) on the type of the corresponding index.  The third is a "deslimer"
-(Conor McBride's paper "A polynomial testing principle" mentions "green slime"
-in reference to non-injective functions that appear in inductive type indexes)
-- which cuts through the slime also by using a sub-eqdec (or sub-eqem) on
-differences between the "green slime" for a's and b's ctors, using the fact
-that the right constructor of a sub-eqdec (or sub-eqem) would imply that any
-such difference spotted in the slime at the field level is truly a difference
-- and that in turn will allow us to prove the right constructor of the current
-eqdec (or eqem) by contradiction, possibly after doing some more of these
-injections.
+isn't productive.  The second is the inj_pair2_alias theorem, which allows us
+to break down the sigT equality one nesting level at a time.  The third is a
+"deslimer" (Conor McBride's paper "A polynomial testing principle" mentions
+"green slime" in reference to non-injective functions that appear in inductive
+type indexes) - which cuts through the slime also by using a sub-eqdec (or
+sub-eqem) on differences between the "green slime" for a's and b's ctors,
+using the fact that the right constructor of a sub-eqdec (or sub-eqem) would
+imply that any such difference spotted in the slime at the field level is
+truly a difference - and that in turn will allow us to prove the right
+constructor of the current eqdec (or eqem) by contradiction, possibly after
+doing some more of these injections.
 
 Once we force the current eqdec (eqem) to be about constructors (which we can
 determine easily by examining the "b" side to see if "is_var b" succeeds or
@@ -147,9 +144,10 @@ slime.
 
 TODO:
 
-- I believe that dependent decide equality will not loop - this is due to the
-  fact that start_eqdec does induction and destruction on the elements, else
-  it fails.  But, might generalize_eqdep undo this?
+- I believe that dependent decide equality will not loop if the
+  inj_pair2_alias is set properly - this is due to the fact that start_eqdec
+  does induction and destruction on the elements, else it fails.  But, might
+  generalize_eqdep undo this?
 
 - It might be nice to have a way for users to declare that some green-slime
   functions are injective on some args - and by doing so possibly avoid extra
@@ -324,13 +322,13 @@ Ltac do_sigT_inj H immediate :=
   first
     [do_subless_sigT_inj H
     |let subT := fresh in
-     (*use evar sub:subT to capture sub-eqdec needed by inj_pair2_eq_dec for
+     (*use evar sub:subT to capture sub-eqdec needed by inj_pair2_alias for
      re-use.  Note that using refine to establish the evar will provoke typeclass
      search, which we don't want to do yet.*)
      evar (subT : Type);
      let sub := fresh in
      unshelve evar (sub:subT);subst subT;revgoals;
-     [(*TBD: note that by using the eqem-based Eqdep inj_pair2_eq_dec, the sub
+     [(*TBD: note that by using inj_pair2_eqem as inj_pair2_alias, the sub
       will be an eqem - which means we will be saving eqems as hyps, which are
       not useful for future eqdecs.  Hence we may have more work to do.*)
       let H' := fresh H in
@@ -431,17 +429,27 @@ Ltac do_fields :=
 Ltac decide_one_equality genindexes ind :=
   unshelve (start_eqdec genindexes ind; do_fields; handle_sub_eqdec).
 
+Ltac check_inj_pair2_alias :=
+  tryif constr_eq inj_pair2_alias False
+  then fail "Please re-define Ltac inj_pair2_alias to an acceptable value"
+  else idtac.
+
 (*the "simple" version doesn't do its own index generalizing:*)
 Tactic Notation "simple" "dependent" "decide" "equality" "using" constr(ind) :=
+  check_inj_pair2_alias;
   repeat decide_one_equality false ind.
 Tactic Notation "simple" "dependent" "decide" "equality" :=
+  check_inj_pair2_alias;
   repeat decide_one_equality false False.
 Tactic Notation "dependent" "decide" "equality" "using" constr(ind) :=
+  check_inj_pair2_alias;
   repeat decide_one_equality true ind.
 Tactic Notation "dependent" "decide" "equality" :=
+  check_inj_pair2_alias;
   repeat decide_one_equality true False.
 
 Ltac dependent_compare x y genindexes ind :=
+  check_inj_pair2_alias;
   try typeclasses eauto;
   let H := fresh in
   first
