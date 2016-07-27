@@ -26,10 +26,10 @@ Ltac common_head trip :=
   end.
 
 (*How to segregate a type's indexes from its non-index parameters: Make two
-instances of the type with fresh type parameters, put one instance in the
-conclusion and the other in a hyp, and case that hyp.  The hyp's indexes don't
-change, but the conclusion's do.  Then just determine which parameters don't
-change - they're not indexes, the rest are indexes. *)
+instances of the type with the same fresh type parameters, put one instance in
+the conclusion and the other in a hyp, and case that hyp.  The hyp's indexes
+don't change, but the conclusion's do.  No non-index parameters change in
+either.  Compare the types of the two instances to find where the differ. *)
 Ltac get_paramed_type_head_internal T giving :=
   let hT := head_of T in
   let inside C := constr:(C -> C -> True) in
