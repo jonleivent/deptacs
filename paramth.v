@@ -5,20 +5,6 @@ get_paramed_type_head produces the parameterized/index-free portion of the type.
 Require Import utils.
 Require Import sandbox.
 
-(*Given a type functor F, produce a fully parameterized type by wrapping the
-result of the inside tactic on F's body with F's parameters.  If F is 
-"fun x y => P x (f y)", then this produces the type 
-"forall x y, <inside (P x (f y))>"*)
-Ltac wrap_typewise F inside :=
-  let rec f F :=
-      lazymatch type of F with
-      | (forall (a : ?X), _) =>
-        let a' := fresh a in
-        constr:(forall (a' : X), ltac:(let R := f (F a') in exact R))
-      | _ => inside F
-      end in
-  f F.
-
 Ltac common_head trip :=
   lazymatch trip with
   | (?X, ?A, ?A) => X
@@ -33,7 +19,7 @@ either.  Compare the types of the two instances to find where the differ. *)
 Ltac get_paramed_type_head_internal T giving :=
   let hT := head_of T in
   let inside C := constr:(C -> C -> True) in
-  let w := wrap_typewise hT inside in
+  let w := under_binders hT inside in
   assert w;
   [intros;
    let H := last_hyp in

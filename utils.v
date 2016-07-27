@@ -46,3 +46,13 @@ Ltac is_prop :=
   let G := goaltype in
   let tG := type of G in
   constr_eq tG Prop.
+
+Ltac under_binders F tac :=
+  let rec f F :=
+      lazymatch type of F with
+      | (forall (a : ?T), _) =>
+        let a' := fresh "v0" in
+        constr:(forall (a' : T), ltac:(let R := f (F a') in exact R))
+      | _ => tac F
+      end in
+  f F.

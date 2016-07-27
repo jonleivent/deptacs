@@ -472,21 +472,10 @@ Hint Mode sumbool + + : typeclass_instances.
 Existing Class or.
 Hint Mode or + + : typeclass_instances.
 
-Ltac op_on_type op type :=
-  let rec f x :=
-      lazymatch type of x with
-      | (forall (a : ?T), @?F a) =>
-        let a := fresh "v0" in
-        constr:(forall (a : T), ltac:(let x' := constr:(x a) in
-                                 let y := f x' in exact y))
-      | _ => constr:(op x)
-      end in
-  f type.
-
 Definition eqthing orfun := fun (x : Type) => forall (a b : x), orfun (a = b) (a <> b).
 
 Ltac make_eq_type type orfun :=
-  let x := op_on_type (eqthing orfun) type in
+  let x := under_binders type ltac:(fun x => constr:(eqthing orfun x)) in
   let x' := (eval cbv beta delta [eqthing] in x) in
   exact x'.
 
