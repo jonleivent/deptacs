@@ -51,7 +51,7 @@ Ltac under_binders F tac :=
   let rec f F :=
       lazymatch type of F with
       | (forall (a : ?T), _) =>
-        let a' := fresh "v0" in
+        let a' := fresh a in
         constr:(forall (a' : T), ltac:(let R := f (F a') in exact R))
       | _ => tac F
       end in
