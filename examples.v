@@ -151,4 +151,25 @@ Section Tconstr.
 
 End Tconstr.
 
+Section Hlist.
+  (** Heterogeneous lists indexed by A with types given by the family B *)
+
+  Variable A : Type.
+  Variable B : A -> Type.
+
+  Inductive hlist : list A -> Type :=
+  | HNil : hlist nil
+  | HCons : forall (a:A) (types:list A), B a -> hlist types -> hlist (a::types).
+
+  Instance hlist_dec
+           (types : list A)
+           {eqdec_A : eqdec A}
+           {eqdec_B : forall a, eqdec (B a)} : forall (a b : hlist types), {a=b}+{a<>b}.
+  Proof.
+    dde.
+  Qed.
+  Print Assumptions hlist_dec.
+
+End Hlist.
+
 (**********************************************************************)
