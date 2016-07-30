@@ -90,7 +90,7 @@ with indexes will need it:
 
 This is because the type of a constructor is seen by Coq as dependent on the
 constructor itself even in this trivial case where there really is only one
-type (Simp tt) in the type family and only one constructo for that type.
+type (Simp tt) in the type family and only one constructor for that type.
 
 So, for such indexed types, we will generalize the conclusion over b and its
 type's indexes (recursively), freeing the conclusion from the destructee.  But
@@ -104,10 +104,10 @@ illegally impacting the type of the sigT equality itself.
 
 Before going further, we process any equalities that may have come from fields
 of a or b, doing injections on them as needed, subject to the requirement that
-these early injections don't require us to work to prove other eqdecs (or
-eqems).  Then, we "block" any remaining equalities in the goal, so they don't
-lead us astray later (into working to prove other eqdecs or eqems that we
-really don't need).  We will unblock these just before finishing.
+these early injections don't require us to prove other eqdecs (or eqems).
+Then, we "block" any remaining equalities in the goal, so they don't lead us
+astray later (into working to prove other eqdecs or eqems that we really don't
+need).  We will unblock these just before finishing.
 
 In the dependent destruction case, we then turn our attention to the sigT
 equalities - we need to process them in each subgoal so that the eqdec (eqem)
