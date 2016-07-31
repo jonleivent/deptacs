@@ -406,7 +406,7 @@ Ltac start_eqdec genindexes ind :=
   subst;
   tryif destruct b
   then non_dep_destruct_cleanup
-  else (depdestruct b; dep_destruct_cleanup).
+  else (once depdestruct b; dep_destruct_cleanup).
 
 Ltac do_next_field pair :=
   Debug 4 idtac "Debug: do_next_field" pair;
@@ -471,6 +471,9 @@ Existing Class sumbool.
 Hint Mode sumbool + + : typeclass_instances.
 Existing Class or.
 Hint Mode or + + : typeclass_instances.
+
+(*The eqdec and eqem notations are convenient ways to create an eqdec or eqem
+types from another type - see examples:*)
 
 Definition eqthing orfun := fun (x : Type) => forall (a b : x), orfun (a = b) (a <> b).
 
