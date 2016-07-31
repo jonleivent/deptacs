@@ -16,23 +16,12 @@ Ltac reverse_args_upto T upto acc :=
 
 Local Definition cloned{T}(x:T) := x.
 
-Ltac is_already_cloned H :=
-  lazymatch type of H with cloned _ => H end.
-
 Ltac pose_clone H T :=
-  let H' := fresh "gen_x" in
-  let dummy := match goal with _ => pose (H' := H : cloned T) end in
-  H'.
-
-Ltac replace_cloned_subterms term :=
-  match goal with
-  | [H' := ?H : cloned ?T |- _] =>
-    lazymatch term with
-    | context C[H] =>
-      let term' := context C[H'] in
-      replace_cloned_subterms term'
-    end
-  | _ => term
+  lazymatch type of H with
+  | cloned _ => H (*no need to clone H more than once:*)
+  | _ =>
+    let H' := fresh "gen_x" in
+    let dummy := match goal with _ => pose (H' := H : cloned T) end in H'
   end.
 
 (*pose replacement copies of all args of type T up to upto (a head subterm of
@@ -43,13 +32,7 @@ Ltac pose_clones_for_args T upto :=
         (*type of X......,  X, args to use*)
       | ((forall (a : ?ta), _), ?X, (?A , ?R)) =>
         (*Note: ta may differ from type of A by virtue of previous clones*)
-        let A' :=
-            match goal with
-            | _ => is_already_cloned A (*no need to clone A more than once:*)
-            | _ =>
-              let ta' := replace_cloned_subterms ta in
-              pose_clone A ta'
-            end in
+        let A' := pose_clone A ta in
         let X' := constr:(X A') in
         let T' := type of X' in
         f (T', X', R)
