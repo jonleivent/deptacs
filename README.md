@@ -10,6 +10,7 @@ Some features are:
 - Can handle cases of "green slime": non-injective function-based type index arguments.
 - Can handle both eqdec (`{a=b} + {a≠b}`) and eqem (`a=b ∨ a≠b`) goals.
 - also: `sigT_generalize_eqs` tactic.
+- also: `dep_destruct` tactic (see examples2.v)
 
 What it won't handle:
 
