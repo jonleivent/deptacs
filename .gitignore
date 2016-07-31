@@ -6,5 +6,5 @@
 *.aux
 TAGS
 *.cache
-#*#
+\#*#
 scratch/*
