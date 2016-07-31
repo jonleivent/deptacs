@@ -102,7 +102,9 @@ VFILES:=utils.v\
   sandbox.v\
   paramth.v\
   Eqdep_em.v\
-  sigTgen.v
+  sigTgen.v\
+  decideq.v\
+  examples.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))
