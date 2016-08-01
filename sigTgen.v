@@ -39,8 +39,8 @@ Ltac pose_clones_for_args T upto :=
       | (_, ?X, I)  => X (*returns: pt paramed with clones*)
       end in
   let tupto := type of upto in
-  let index_args := reverse_args_upto T upto I in
-  f (tupto, upto, index_args).
+  let args := reverse_args_upto T upto I in
+  f (tupto, upto, args).
 
 (*Return the possibly nested sigT type needed to dependently analyze term -
 only term's type's params up to the upto arg are given the sigT treatment.*)
@@ -50,8 +50,7 @@ Ltac sigT_for T upto :=
       | upto => h
       | ?F _ =>
         let a := fresh in
-        constr:(sigT (fun a => ltac:(let h' := constr:(h a) in
-                                  let r := f F h' in exact r)))
+        constr:(sigT (fun a => ltac:(let R := f F (h a) in exact R)))
       end in
   f T upto.
 
@@ -112,8 +111,8 @@ When doing non-axiom-based dependent case analysis, such as by using
 Eqdep_dec.inj_pair2_eq_dec to avoid the eq_rect_eq axiom, it is best if this
 tactic does not create too many sigT-based equalities (nestings), as any such
 extras may require an eqdec proof for a type which cannot be proven.  The
-axiom-based schemes (such as JMeq-based generalize_eqs and such, or those
-using eq_rect_eq) do not have this issue as they do not require eqdec proofs.
+axiom-based schemes (such as when using JMeq-based generalize_eqs, or using
+eq_rect_eq) do not have this issue as they do not require eqdec proofs.
 
 There are two modes, based on the setting of sigT_generalize_as_needed.  If
 set to true, then the tactic will rely on backtracking to determine which
