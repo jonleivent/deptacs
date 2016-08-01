@@ -38,6 +38,7 @@ Inductive Bad (A : Type) : Type -> Type -> Type :=
 
 Instance BadNat_eqdec : eqdec (Bad unit nat bool).
 Proof.
+  Fail decide equality.
   dde.
 Abort.
 
@@ -47,6 +48,7 @@ Inductive Fin : nat -> Set :=
 
 Instance Fin_eqdec : eqdec Fin.
 Proof.
+  Fail decide equality.
   dde.
 Qed.
 Print Assumptions Fin_eqdec.
@@ -57,6 +59,7 @@ Inductive Fin3 : forall n (f1 f2 : Fin n), Set :=
 
 Instance Fin3_eqdec : forall n f1 f2 (a b : Fin3 n f1 f2), {a=b}+{a<>b}.
 Proof.
+  Fail decide equality.
   dde.
 Qed.
 Print Assumptions Fin3_eqdec.
@@ -67,6 +70,7 @@ Inductive Finx(n : nat) : Set :=
 
 Instance Finx_eqdec : forall n (a b : Finx n), {a=b}+{a<>b}.
 Proof.
+  Fail decide equality.
   dde.
 Qed.
 Print Assumptions Finx_eqdec.
@@ -77,6 +81,7 @@ Inductive vect A : nat -> Type :=
 
 Instance vect_eqdec A `{A_eqdec : eqdec A} : eqdec (vect A).
 Proof.
+  Fail decide equality.
   dde.
 Qed.
 Print Assumptions vect_eqdec.
@@ -92,6 +97,7 @@ Section Green_Slime.
   
   Instance Foo_dec : eqdec Foo.
   Proof.
+    Fail decide equality.
     dde.
   Qed.
   Print Assumptions Foo_dec.
@@ -107,6 +113,7 @@ Section Green_Slime.
 
   Instance Bar_dec : forall a b1 b2 (x y : Bar a b1 b2), {x=y}+{x<>y}.
   Proof.
+    Fail decide equality.
     dde.
   Qed.
   Print Assumptions Bar_dec.
@@ -116,6 +123,8 @@ End Green_Slime.
 Import BinNums.
 Instance positive_dec : forall (a b : positive), {a=b}+{a<>b}.
 Proof.
+  decide equality.
+  Restart.
   dde.
 Qed.
 Print Assumptions positive_dec.
@@ -134,6 +143,7 @@ Section Tconstr.
 
   Instance tconstr_dec : forall n (a b : tconstr n), {a=b}+{a<>b}.
   Proof.
+    Fail decide equality.
     dde.
   Qed.
   Print Assumptions tconstr_dec.
@@ -145,6 +155,7 @@ Section Tconstr.
 
   Instance tconstrx_dec : forall n (a b : tconstrx n), {a=b}+{a<>b}.
   Proof.
+    Fail decide equality.
     dde.
   Qed.
   Print Assumptions tconstrx_dec.
@@ -166,6 +177,7 @@ Section Hlist.
            {eqdec_A : eqdec A}
            {eqdec_B : forall a, eqdec (B a)} : forall (a b : hlist types), {a=b}+{a<>b}.
   Proof.
+    Fail decide equality.
     dde.
   Qed.
   Print Assumptions hlist_dec.
@@ -173,3 +185,49 @@ Section Hlist.
 End Hlist.
 
 (**********************************************************************)
+
+(*from http://adam.chlipala.net/cpdt/html/ProgLang.html:*)
+
+Set Implicit Arguments.
+Inductive type : Type :=  Nat : type | Func : type -> type -> type.
+
+Instance type_eqdec : eqdec type.
+Proof.
+  decide equality.
+Qed.
+Print Assumptions type_eqdec.
+
+Require Import List.
+Import ListNotations.
+
+Inductive member (A : Type) (elm : A) : list A -> Type :=
+  HFirst : forall ls : list A, member elm (elm :: ls)
+| HNext : forall (x : A) (ls : list A),
+    member elm ls -> member elm (x :: ls).
+
+(*Note that we skip eqdec on member due to no A_eqdec, but this is OK wrt term
+below, where A is type:*)
+
+Inductive term : list type -> type -> Type :=
+  Var : forall (G : list type) (t : type), member t G -> term G t
+| Const : forall G : list type, nat -> term G Nat
+| Plus : forall G : list type, term G Nat -> term G Nat -> term G Nat
+| Abs : forall (G : list type) (dom ran : type),
+    term (dom :: G) ran -> term G (Func dom ran)
+| App : forall (G : list type) (dom ran : type),
+    term G (Func dom ran) -> term G dom -> term G ran
+| Let : forall (G : list type) (t1 t2 : type),
+    term G t1 -> term (t1 :: G) t2 -> term G t2.
+
+Instance list_eqdec A {A_eqdec : eqdec A} : eqdec (list A).
+Proof.
+  decide equality.
+Qed.
+Print Assumptions list_eqdec.
+
+Instance term_eqdec : eqdec term.
+Proof.
+  Fail decide equality.
+  dde.
+Qed.
+Print Assumptions term_eqdec.
